@@ -32,22 +32,6 @@ public class Game : MonoBehaviour
 
     [SerializeField] GameObject p;
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
     enum Mode
     {
         Title, Game, Over, Clear, remain
@@ -67,10 +51,6 @@ public class Game : MonoBehaviour
 
         life_num = PlayerPrefs.GetInt("life", 5);
         heart_num = PlayerPrefs.GetInt("heart", 3);
-
-
-
-
 
     }
 
