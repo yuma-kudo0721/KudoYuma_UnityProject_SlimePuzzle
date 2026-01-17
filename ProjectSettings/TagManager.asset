@@ -1,0 +1,59 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!78 &1
+TagManager:
+  serializedVersion: 2
+  tags:
+  - GroundCheck
+  - Exit
+  - Ice
+  - Scope
+  - Ground
+  - PlayerClone
+  - PlayerBullet
+  - Bat
+  - PlayerBulletBat
+  - PlayerCloneBat
+  - Wall
+  - Ladder
+  - Bottom
+  layers:
+  - Default
+  - TransparentFX
+  - Ignore Raycast
+  - 
+  - Water
+  - UI
+  - Ground
+  - WallCheck
+  - Needle
+  - SlimeBullet
+  - Player
+  - DropingSlimeBullet
+  - Door
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  m_SortingLayers:
+  - name: Default
+    uniqueID: 0
+    locked: 0
+  - name: Player
+    uniqueID: 1015373047
+    locked: 0
