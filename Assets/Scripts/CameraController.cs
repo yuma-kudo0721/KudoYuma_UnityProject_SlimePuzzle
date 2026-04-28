@@ -13,6 +13,8 @@ public class CameraController : MonoBehaviour
     [SerializeField]
     float leftLimit = 0f;  // カメラがこれ以上左に行けない位置
 
+    [SerializeField] GameObject a;
+
     void Start()
     {
 
@@ -20,7 +22,7 @@ public class CameraController : MonoBehaviour
 
     void Update()
     {
-        Vector3 a = cam.transform.position;
+        /*Vector3 a = cam.transform.position;
 
         Vector2 dire = (player.transform.position - cam.transform.position).normalized;
 
@@ -35,5 +37,6 @@ public class CameraController : MonoBehaviour
 
         // カメラを移動させる
         cam.transform.position = new Vector3(newX, cam.transform.position.y, cam.transform.position.z);
+        */
     }
 }

@@ -24,14 +24,6 @@ public class Game : MonoBehaviour
     AudioSource snd;
 
 
-    public static int life_num = 5; // int型
-    public static int heart_num = 3; // int型
-
-    public GameObject gameOverText;
-    public GameObject pressZText;
-
-    [SerializeField] GameObject p;
-
     enum Mode
     {
         Title, Game, Over, Clear, remain
@@ -46,11 +38,9 @@ public class Game : MonoBehaviour
         txt.enabled = false;
         mode = Mode.Title;
         // 非表示にする
-        gameOverText.SetActive(false);
-        pressZText.SetActive(false);
 
-        life_num = PlayerPrefs.GetInt("life", 5);
-        heart_num = PlayerPrefs.GetInt("heart", 3);
+
+
 
     }
 
@@ -85,8 +75,7 @@ public class Game : MonoBehaviour
             Debug.Log("削除しました");
         }
 
-        life_num = Mathf.Clamp(life_num, 0, 5);
-        heart_num = Mathf.Clamp(heart_num, 0, 3);
+
 
 
     }
@@ -102,45 +91,6 @@ public class Game : MonoBehaviour
         player.enabled = true;
         player.Reset();
         mode = Mode.Game;
-
-    }
-
-    public void Remain(bool touchedBottom)
-    {
-        heart_num--;
-        PlayerPrefs.SetInt("heart", heart_num);
-
-
-
-        if (heart_num <= 0 || touchedBottom)
-        {
-            life_num--;
-            PlayerPrefs.SetInt("life", life_num);
-
-            Debug.Log("残機が減りました。残機: " + life_num);
-            PlayerPrefs.SetInt("heart", 3);
-
-            gameOverText.SetActive(true);
-            pressZText.SetActive(true);
-            Destroy(p);
-
-        }
-
-
-
-        if (life_num <= 0)
-        {
-            Destroy(p);
-            StartGameover();
-
-        }
-        if (life_num <= 0 || heart_num <= 0 || touchedBottom)
-        {
-            mode = Mode.remain;
-        }
-
-
-
 
     }
 

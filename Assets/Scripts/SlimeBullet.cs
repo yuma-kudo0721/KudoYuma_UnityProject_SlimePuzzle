@@ -9,6 +9,8 @@ public class SlimeBullet : MonoBehaviour
     [SerializeField] LayerMask dropBulletLayer; // ドロップ後のレイヤー
     [SerializeField] GameObject splashSlime;
 
+    [SerializeField] int gravityPower;
+
     [SerializeField] GameObject slimeClone;//スライムのクローン
     [SerializeField] GameObject slimeBulletBat;
     //public float bulletSpeed = 30f;
@@ -27,7 +29,7 @@ public class SlimeBullet : MonoBehaviour
         col = GetComponent<Collider2D>();
         player = GameObject.FindWithTag("Player").transform;
         GameObject bat = GameObject.FindGameObjectWithTag("Bat");
-        shin = bat.GetComponent<ShindoBat>();
+        //shin = bat.GetComponent<ShindoBat>();
 
 
         // 弾丸の初速度を設定
@@ -40,7 +42,7 @@ public class SlimeBullet : MonoBehaviour
         if (Vector2.Distance(firstPos, transform.position) >= dis && !droping)
         {
             droping = true;
-            rb.gravityScale = 20;
+            rb.gravityScale = gravityPower;
 
             // レイヤーを設定（LayerMask からレイヤー番号を取得）
             gameObject.layer = Mathf.RoundToInt(Mathf.Log(dropBulletLayer.value, 2));
@@ -58,7 +60,10 @@ public class SlimeBullet : MonoBehaviour
         // プレイヤー以外のオブジェクトに衝突した場合、ドロップ処理を開始
         if (!droping && other.gameObject.CompareTag("Player") == false)
         {
+
             droping = true;
+            rb.velocity = new Vector2(0f, rb.velocity.y); // 横移動を止める
+            rb.gravityScale = gravityPower; // 重力で落とす
 
             // レイヤーを設定（LayerMask からレイヤー番号を取得）
             gameObject.layer = Mathf.RoundToInt(Mathf.Log(dropBulletLayer.value, 2));

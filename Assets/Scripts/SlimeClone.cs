@@ -7,12 +7,15 @@ public class SlimeClone : MonoBehaviour
     public float size;
     [SerializeField] Vector2 defaultSize;
 
+    private Rigidbody2D rb;
+
 
     // 他のスクリプトで変更できるようにする
 
     void Start()
     {
         defaultSize = transform.localScale;
+        rb = GetComponent<Rigidbody2D>();
     }
 
     void Update()

@@ -72,7 +72,7 @@ public class ShindoBat : MonoBehaviour
 
         if (other.gameObject.CompareTag("Player"))
         {
-            game.Remain(false);
+
             // Particle System コンポーネントを取得
 
         }

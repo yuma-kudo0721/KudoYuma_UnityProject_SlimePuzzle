@@ -23,7 +23,7 @@ public class HeartText : MonoBehaviour
     void UpdateHeartText()
     {
 
-        heart.text = "x" + Game.heart_num;
+
 
     }
 }

@@ -84,7 +84,7 @@ SpriteRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 10754, guid: 0000000000000000f000000000000000, type: 0}
+  - {fileID: 2100000, guid: a97c105638bdf8b4a8650670310a4cd3, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -214,7 +214,7 @@ SpriteRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 10754, guid: 0000000000000000f000000000000000, type: 0}
+  - {fileID: 2100000, guid: a97c105638bdf8b4a8650670310a4cd3, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -384,7 +384,7 @@ SpriteRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 10754, guid: 0000000000000000f000000000000000, type: 0}
+  - {fileID: 2100000, guid: a97c105638bdf8b4a8650670310a4cd3, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -450,6 +450,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   speed: 8
+  ladderSpeed: 5
   jumpPower: 8.5
   decelerationRate: 0.7
   decelerationRateOnIce: 0.99
@@ -465,7 +466,37 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 16
   game: {fileID: 0}
+  slimeBullet: {fileID: 0}
+  slimeBulletBat: {fileID: 0}
+  firePosition: {fileID: 0}
+  PlayerMark: {fileID: 0}
+  Aim: {fileID: 0}
+  rb: {fileID: 0}
+  normalController: {fileID: 0}
+  batController: {fileID: 0}
   initialPosition: {x: 0, y: 0, z: 0}
+  slimeCount: []
+  slimeSize: 1
+  defaultSize: {x: 0, y: 0}
+  slimeDestoryPar: {fileID: 0}
+  slimeClone: {fileID: 0}
+  slimeCloneBat: {fileID: 0}
+  controllSlimeNumber: 0
+  isBatMode: 0
+  checkPoints: []
+  slimeTetherPrefab: {fileID: 0}
+  mergeScaleMultiplier: 1.2
+  mergeScaleDuration: 0.18
+  mergeFlashDuration: 0.08
+  mergeHitStopDuration: 0.04
+  slimebigg: 0.3
+  canControl: 1
+  yajirushi: {fileID: 0}
+  shootPoint: {fileID: 0}
+  shootPower: 10
+  AimingRotationTime: 1
+  aiming: {fileID: 0}
+  target: {fileID: 0}
 --- !u!50 &5406003388270363820
 Rigidbody2D:
   serializedVersion: 4
@@ -528,8 +559,8 @@ BoxCollider2D:
   m_Offset: {x: 0.1170003, y: -0.015086245}
   m_SpriteTilingProperty:
     border: {x: 0, y: 0, z: 0, w: 0}
-    pivot: {x: 0.5, y: 0.5}
-    oldSize: {x: 0.54, y: 0.32}
+    pivot: {x: 0.6730769, y: 0.4375}
+    oldSize: {x: 1.625, y: 2}
     newSize: {x: 0.54, y: 0.32}
     adaptiveTilingThreshold: 0.5
     drawMode: 0
@@ -552,6 +583,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   cam: {fileID: 0}
   player: {fileID: 9164195477262406090}
+  speed: 10
+  leftLimit: 0
+  a: {fileID: 0}
 --- !u!58 &5283403657890726395
 CircleCollider2D:
   m_ObjectHideFlags: 0

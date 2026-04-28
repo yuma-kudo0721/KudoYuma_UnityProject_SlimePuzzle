@@ -37,7 +37,7 @@ public class LifeText : MonoBehaviour
 
     void UpdateLifeText()
     {
-        lifeText.text = "×" + Game.life_num; // ライフのテキストを更新
+        //lifeText.text = "×" + Game.life_num; // ライフのテキストを更新
 
 
     }

@@ -220,49 +220,41 @@ MonoBehaviour:
     downto: -1
     upto: -1
     sceneName: Stage1
-    stageCircle: {fileID: 929152658}
   - rightto: -1
     leftto: 0
     downto: 3
     upto: 2
     sceneName: Stage2
-    stageCircle: {fileID: 0}
   - rightto: 5
     leftto: -1
     downto: 1
     upto: -1
     sceneName: Stage3
-    stageCircle: {fileID: 0}
   - rightto: 4
     leftto: -1
     downto: -1
     upto: 1
     sceneName: Stage4
-    stageCircle: {fileID: 0}
   - rightto: -1
     leftto: 3
     downto: -1
     upto: 6
     sceneName: Stage5
-    stageCircle: {fileID: 0}
   - rightto: -1
     leftto: 2
     downto: 6
     upto: -1
     sceneName: Stage6
-    stageCircle: {fileID: 0}
   - rightto: 7
     leftto: -1
     downto: 4
     upto: 5
     sceneName: 
-    stageCircle: {fileID: 0}
   - rightto: -1
     leftto: 6
     downto: -1
     upto: -1
     sceneName: 
-    stageCircle: {fileID: 0}
   stages:
   - {fileID: 47901957}
   - {fileID: 26281109}
@@ -272,8 +264,10 @@ MonoBehaviour:
   - {fileID: 763200928}
   - {fileID: 103303647}
   - {fileID: 1526702070}
+  circles: []
   onStageNum: 0
   canControll: 1
+  targetColor: {r: 1, g: 0, b: 0, a: 1}
   seconds: 0.75
   smooth: 100
 --- !u!4 &95340268
@@ -1003,7 +997,7 @@ SpriteRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 10754, guid: 0000000000000000f000000000000000, type: 0}
+  - {fileID: 2100000, guid: a97c105638bdf8b4a8650670310a4cd3, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -1118,7 +1112,7 @@ SpriteRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 10754, guid: 0000000000000000f000000000000000, type: 0}
+  - {fileID: 2100000, guid: a97c105638bdf8b4a8650670310a4cd3, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -1248,7 +1242,7 @@ SpriteRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 10754, guid: 0000000000000000f000000000000000, type: 0}
+  - {fileID: 2100000, guid: a97c105638bdf8b4a8650670310a4cd3, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -1317,7 +1311,7 @@ SpriteRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 10754, guid: 0000000000000000f000000000000000, type: 0}
+  - {fileID: 2100000, guid: a97c105638bdf8b4a8650670310a4cd3, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0

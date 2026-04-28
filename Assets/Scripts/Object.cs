@@ -55,8 +55,7 @@ public class Object : MonoBehaviour
 
 
 
-            game.Remain(false);
-            // Particle System コンポーネントを取得
+
 
 
 

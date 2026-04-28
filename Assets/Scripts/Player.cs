@@ -105,6 +105,28 @@ public class Player : MonoBehaviour
 
     CircleCollider2D cc2d;
 
+    public Transform[] checkPoints; // 全チェックポイントの位置
+
+    [SerializeField] GameObject slimeTetherPrefab;
+    SlimeTether currentTether;
+
+    [SerializeField] float mergeScaleMultiplier = 1.2f;
+    [SerializeField] float mergeScaleDuration = 0.18f;
+    [SerializeField] float mergeFlashDuration = 0.08f;
+    [SerializeField] float mergeHitStopDuration = 0.04f;
+
+    bool isPlayingMergeEffect = false;
+    Color defaultColor = Color.white;
+
+    [SerializeField] LayerMask dropPlatformLayer;
+    [SerializeField] float dropTime = 0.25f;
+
+    bool isDropping = false;
+    Collider2D playerCol;
+
+
+
+
     public void Awake()
     {
         rb = GetComponent<Rigidbody2D>();
@@ -112,66 +134,68 @@ public class Player : MonoBehaviour
         sp = GetComponent<SpriteRenderer>();
         snd = gameObject.AddComponent<AudioSource>();
         cc2d = GetComponent<CircleCollider2D>();
+        playerCol = GetComponent<Collider2D>();
 
-
+        defaultColor = sp.color;
         defaultSize = transform.localScale;
         slimeCount.Add(gameObject);
 
         initialPosition = transform.position;
         _DecelerationRate = decelerationRate;
 
-        Reset();
+        int id = PlayerPrefs.GetInt("LastCheckpoint", 0);
+
+        if (id < checkPoints.Length)
+        {
+            if (checkPoints[id] != null)
+            {
+                transform.position = checkPoints[id].position;
+                Debug.Log("リスポーン");
+            }
+        }
     }
+
 
 
     // Update is called once per frame
     void Update()
     {
+        if (!canControl)
+        {
+            anim.SetBool("Walk", false);
+            return;
+        }
+
         CheckGround();
         CheckWater();
         Move();
         jump();
+        DropDown();
+
         if (slimeSize > 0)
         {
             Aiming();
             FiringBullet();
-
         }
+
         if (Input.GetKeyDown(KeyCode.C) && slimeCount.Count > 1)
         {
             ChangeClone(controllSlimeNumber);
-            GameObject targetObj = GameObject.FindWithTag("PlayerCloneBat");
-            if (targetObj != null)
-            {
-                Animator targetAnimator = targetObj.GetComponent<Animator>();
-
-
-
-                if ((targetAnimator != null && targetAnimator.runtimeAnimatorController == normalController))
-                {
-                    isBatMode = false;
-                }
-                if ((targetAnimator != null))
-                {
-                    targetAnimator.runtimeAnimatorController = normalController;
-
-                }
-                if ((!isBatMode))
-                {
-                    targetAnimator.runtimeAnimatorController = batController;
-
-                }
-            }
-
-
         }
+
         UpdataSlimeSize(slimeSize);
         Slimecreate();
 
         if (isBatMode)
-        { anim.runtimeAnimatorController = batController; }
-        else { anim.runtimeAnimatorController = normalController; }
+        {
+            anim.runtimeAnimatorController = batController;
+        }
+        else
+        {
+            anim.runtimeAnimatorController = normalController;
+        }
     }
+
 
     public void Slimecreate()
     {
@@ -189,6 +213,7 @@ public class Player : MonoBehaviour
             {
                 GameObject g = Instantiate(slimeClone, bullet.transform.position, Quaternion.identity);
                 slimeCount.Add(g);
+                CreateTether(g.transform);
                 Destroy(bullet);
             }
 
@@ -214,14 +239,9 @@ public class Player : MonoBehaviour
         transform.localScale = new Vector3(newSize.x, newSize.y, 1f);
     }
 
-
-
     void ChangeClone(int num)
     {
         GameObject next = null;
-
-
-
 
         if (num == slimeCount.Count - 1)
         {
@@ -251,10 +271,7 @@ public class Player : MonoBehaviour
 
         }
 
-
-
         Vector3 playerPos = transform.position;// 現在のスライムの位置
-
         Vector3 NextPos = next.transform.position; // 次のスライムの位置
 
         transform.position = NextPos;  // 現在のスライムの位置を次のスライムの位置に変更
@@ -266,34 +283,17 @@ public class Player : MonoBehaviour
 
         next.GetComponent<SlimeClone>().size = PlayerSize;// 次のスライムのサイズを現在のスライムのサイズに変更
         slimeSize = NextSize; // 現在のスライムのサイズを次のスライムのサイズに変更
-
     }
 
 
     bool ismoving = false;
     void Move()
     {
-
         float horizontalInput = Input.GetAxisRaw("Horizontal");
         Vector2 direction = new Vector2(horizontalInput, 0).normalized;
         rb.velocity = new Vector2(direction.x * speed, rb.velocity.y);
         // キャラクターの下に Raycast を飛ばして地面の角度を取得
-        RaycastHit2D hit = Physics2D.Raycast(transform.position, Vector2.down, 3f, groundLayer);
 
-        if (hit.collider != null)
-        {
-            // 法線ベクトルを使ってキャラクターの傾きを調整
-            Vector2 normal = hit.normal;
-            float angle = Mathf.Atan2(normal.y, normal.x) * Mathf.Rad2Deg;
-
-            // キャラクターを地形の傾きに合わせる
-            transform.rotation = Quaternion.Euler(0, 0, angle - 90f);
-        }
-        else
-        {
-            // 空中にいるときは元の角度に戻す
-            transform.rotation = Quaternion.Euler(0, 0, 0);
-        }
         if (Input.GetKey(KeyCode.RightArrow))
         {
             rb.velocity = new Vector2(speed, rb.velocity.y);
@@ -320,8 +320,20 @@ public class Player : MonoBehaviour
             ismoving = false;
 
         }
-
     }
+
+    void CreateTether(Transform cloneTransform)
+    {
+        if (currentTether != null)
+        {
+            Destroy(currentTether.gameObject);
+        }
+
+        GameObject tetherObj = Instantiate(slimeTetherPrefab);
+        currentTether = tetherObj.GetComponent<SlimeTether>();
+        currentTether.Setup(transform, cloneTransform);
+    }
+
 
     void jump()
     {
@@ -382,7 +394,7 @@ public class Player : MonoBehaviour
 
         if (Onground)
         {
-            txt.text = "Ground";
+            //txt.text = "Ground";
             GameObject col = Physics2D.OverlapCircle(groundHitObject.transform.position, 0.6f, groundLayer).gameObject;
             if (col.tag == "Ice")
             {
@@ -394,9 +406,9 @@ public class Player : MonoBehaviour
             }
 
         }
-        else { txt.text = "Air" + numJump; }
+        //        else { txt.text = "Air" + numJump; }
         //txt.textに続けて文字を追加
-        txt.text += "\nWater:" + inWater.ToString("f1");
+        //      txt.text += "\nWater:" + inWater.ToString("f1");
 
     }
 
@@ -462,6 +474,19 @@ public class Player : MonoBehaviour
         }
     }
 
+    public bool canControl = true;
+
+    public void SetControl(bool value)
+    {
+        canControl = value;
+
+        if (!canControl)
+        {
+            rb.velocity = Vector2.zero;
+        }
+    }
+
+
     private void OnTriggerExit2D(Collider2D other)
     {
         if (other.CompareTag("Ladder"))
@@ -471,16 +496,7 @@ public class Player : MonoBehaviour
     }
 
 
-    void OnTriggerEnter2D(Collider2D col)
-    {
-        if (col.tag == "Bottom")
-        {
 
-            Destroy(gameObject); // プレイヤー消す
-            game.Remain(true);
-
-        }
-    }
 
     void OnCollisionEnter2D(Collision2D collision)
     {
@@ -500,6 +516,13 @@ public class Player : MonoBehaviour
             slimeSize += collision.gameObject.GetComponent<SlimeClone>().size + 1;
             rb.mass++;
             CloneReset();
+
+            if (currentTether != null && currentTether.IsConnectedTo(collision.gameObject))
+            {
+                Destroy(currentTether.gameObject);
+                currentTether = null;
+            }
+
         }
 
         if (collision.gameObject.tag == "PlayerCloneBat")
@@ -546,10 +569,10 @@ public class Player : MonoBehaviour
 
         }
 
-
-
         if (collision.gameObject.tag == "Wall" && ismoving)
         { anim.SetBool("Collapse", true); }
+
+
     }
 
     public IEnumerator FlashWhite()
@@ -734,6 +757,92 @@ public class Player : MonoBehaviour
             Quaternion rot = yajirushi.transform.localRotation;
             yajirushi.transform.localRotation = Quaternion.Euler(new Vector3(rot.x, 180, rot.z));
         }
+    }
+
+    public void PlayMergeEffect()
+    {
+        if (!gameObject.activeInHierarchy) return;
+        StartCoroutine(PlayMergeEffectCoroutine());
+    }
+
+    IEnumerator PlayMergeEffectCoroutine()
+    {
+        if (isPlayingMergeEffect) yield break;
+        isPlayingMergeEffect = true;
+
+        Time.timeScale = 0f;
+        yield return new WaitForSecondsRealtime(mergeHitStopDuration);
+        Time.timeScale = 1f;
+
+        Vector3 baseScale = defaultSize;
+        Vector3 bigScale = defaultSize * mergeScaleMultiplier;
+
+        sp.color = Color.white;
+
+        float timer = 0f;
+        while (timer < mergeScaleDuration)
+        {
+            timer += Time.unscaledDeltaTime;
+            float t = timer / mergeScaleDuration;
+
+            if (t < 0.5f)
+            {
+                transform.localScale = Vector3.Lerp(baseScale, bigScale, t / 0.5f);
+            }
+            else
+            {
+                transform.localScale = Vector3.Lerp(bigScale, baseScale, (t - 0.5f) / 0.5f);
+            }
+
+            if (timer >= mergeFlashDuration)
+            {
+                sp.color = defaultColor;
+            }
+
+            yield return null;
+        }
+
+        transform.localScale = baseScale;
+        sp.color = defaultColor;
+        isPlayingMergeEffect = false;
+    }
+
+    void DropDown()
+    {
+        if (!Input.GetKeyDown(KeyCode.DownArrow) && !Input.GetKeyDown(KeyCode.S)) return;
+
+        Debug.Log("Down pressed");
+        Debug.Log("Onground: " + Onground);
+
+        if (!Onground || isDropping) return;
+
+        Collider2D platformCol = Physics2D.OverlapCircle(
+            groundHitObject.transform.position,
+            0.3f,
+            dropPlatformLayer
+        );
+
+        Debug.Log("Platform: " + platformCol);
+
+        if (platformCol != null)
+        {
+            StartCoroutine(DropPlatformCoroutine(platformCol));
+        }
+    }
+
+    IEnumerator DropPlatformCoroutine(Collider2D platformCol)
+    {
+        isDropping = true;
+
+        platformCol.enabled = false;
+
+        rb.velocity = new Vector2(rb.velocity.x, -1f);
+
+        yield return new WaitForSeconds(0.3f);
+
+        platformCol.enabled = true;
+
+        isDropping = false;
     }
 
 
