@@ -2,8 +2,7 @@ using UnityEngine;
 
 public class PushableRock : MonoBehaviour
 {
-    [SerializeField] float requiredSlimeSize = 2f;
-    [SerializeField] bool requireFullyMerged = true;
+    [SerializeField] float requiredSlimeSize = 1f;
 
     [Header("Unlocked Rock")]
     [SerializeField] float unlockedMass = 8f;
@@ -41,10 +40,9 @@ public class PushableRock : MonoBehaviour
         Player player = collision.gameObject.GetComponent<Player>();
         if (player == null) return;
 
-        bool isMerged = player.slimeCount.Count == 1;
         bool hasEnoughSize = player.slimeSize >= requiredSlimeSize;
 
-        if ((!requireFullyMerged || isMerged) && hasEnoughSize)
+        if (hasEnoughSize)
         {
             ApplyUnlockedState();
         }

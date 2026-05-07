@@ -316,6 +316,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   size: 0
   defaultSize: {x: 0, y: 0}
+  respawnDelay: 1
 --- !u!70 &2968847223620881013
 CapsuleCollider2D:
   m_ObjectHideFlags: 0

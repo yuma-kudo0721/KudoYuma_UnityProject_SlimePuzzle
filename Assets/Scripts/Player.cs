@@ -93,6 +93,7 @@ public class Player : MonoBehaviour
 
     public List<GameObject> slimeCount = new List<GameObject>();//本体とクローンを格納
     public float slimeSize = 1;//スライムのサイズと打てる球の数
+    [SerializeField] float maxSlimeAmount = 2f;
     public Vector2 defaultSize;//初期サイズ
 
     //slimebullet
@@ -123,7 +124,12 @@ public class Player : MonoBehaviour
 
     bool isDropping = false;
     Collider2D playerCol;
+    Coroutine mergeInvincibleBlinkCoroutine;
+    readonly List<Collider2D> ignoredMergeColliders = new List<Collider2D>();
 
+    [SerializeField] float maxSlimeSize = 5f; //上限値。バグ対策
+
+    float defaultMass;
 
 
 
@@ -142,6 +148,7 @@ public class Player : MonoBehaviour
 
         initialPosition = transform.position;
         _DecelerationRate = decelerationRate;
+        defaultMass = rb.mass;
 
         int id = PlayerPrefs.GetInt("LastCheckpoint", 0);
 
@@ -232,6 +239,26 @@ public class Player : MonoBehaviour
     }
 
     [SerializeField] float slimebigg = 0.3f;
+
+    public float AddSlimeWithCap(float amount)
+    {
+        float addable = Mathf.Min(amount, maxSlimeAmount - slimeSize);
+        if (addable <= 0f)
+        {
+            return 0f;
+        }
+
+        slimeSize += addable;
+        rb.mass = defaultMass * slimeSize; // ← 修正
+        return addable;
+    }
+
+    void ConsumeSlime(float amount)
+    {
+        slimeSize = Mathf.Max(0f, slimeSize - amount);
+        rb.mass = defaultMass * slimeSize; // ← 修正
+    }
+
     void UpdataSlimeSize(float size)
     {
 
@@ -509,30 +536,39 @@ public class Player : MonoBehaviour
 
         }
 
+
+
         if (collision.gameObject.tag == "PlayerClone")
         {
+            if (isMergeInvincible) return;
+
+            SlimeClone clone = collision.gameObject.GetComponent<SlimeClone>();
+            if (clone == null || !clone.TryBeginMerge()) return;
+
             slimeCount.Remove(collision.gameObject);
-            Destroy(collision.gameObject);
-            slimeSize += collision.gameObject.GetComponent<SlimeClone>().size + 1;
-            rb.mass++;
+            AddSlimeWithCap(clone.size + 1);
             CloneReset();
+            Destroy(collision.gameObject);
 
             if (currentTether != null && currentTether.IsConnectedTo(collision.gameObject))
             {
                 Destroy(currentTether.gameObject);
                 currentTether = null;
             }
-
         }
 
         if (collision.gameObject.tag == "PlayerCloneBat")
         {
+            if (isMergeInvincible) return;
+
+            SlimeClone clone = collision.gameObject.GetComponent<SlimeClone>();
+            if (clone == null || !clone.TryBeginMerge()) return;
+
             isBatMode = true;
             slimeCount.Remove(collision.gameObject);
-            Destroy(collision.gameObject);
-            slimeSize += collision.gameObject.GetComponent<SlimeClone>().size + 1;
-            rb.mass++;
+            AddSlimeWithCap(clone.size + 1);
             CloneReset();
+            Destroy(collision.gameObject);
         }
 
 
@@ -541,8 +577,7 @@ public class Player : MonoBehaviour
             if (collision.gameObject.GetComponent<SlimeBullet>().droping)
             {
                 Destroy(collision.gameObject);
-                slimeSize++;
-                rb.mass++;
+                AddSlimeWithCap(1f);
             }
         }
 
@@ -552,8 +587,7 @@ public class Player : MonoBehaviour
             {
 
                 Destroy(collision.gameObject);
-                slimeSize++;
-                rb.mass++;
+                AddSlimeWithCap(1f);
 
                 numJump = 0; // 取得時にリセット
                 isBatMode = true;
@@ -648,7 +682,7 @@ public class Player : MonoBehaviour
                 anim.SetTrigger("Throw");
 
                 slimeSize--;
-                rb.mass--;
+                NormalizeSlimeState();
                 aiming.SetActive(false);
                 AimingRotationTimer = 0;
             }
@@ -664,7 +698,7 @@ public class Player : MonoBehaviour
                 anim.SetTrigger("Throw");
 
                 slimeSize--;
-                rb.mass--;
+                NormalizeSlimeState();
                 aiming.SetActive(false);
                 AimingRotationTimer = 0;
                 isBatMode = false;
@@ -844,6 +878,224 @@ public class Player : MonoBehaviour
 
         isDropping = false;
     }
+
+    //プレイヤー再配置
+    bool isRespawning = false;
+    [SerializeField] float respawnDelay = 0.2f;
+    [SerializeField] GameObject triangle;
+    bool isMergeInvincible = false;
+    [SerializeField] float mergeInvincibleTime = 0.5f;
+
+    List<Collider2D> GetCloneColliders()
+    {
+        List<Collider2D> cloneColliders = new List<Collider2D>();
+
+        for (int i = 0; i < slimeCount.Count; i++)
+        {
+            GameObject slime = slimeCount[i];
+            if (slime == null || slime == gameObject) continue;
+
+            Collider2D cloneCollider = slime.GetComponent<Collider2D>();
+            if (cloneCollider != null)
+            {
+                cloneColliders.Add(cloneCollider);
+            }
+        }
+
+        return cloneColliders;
+    }
+
+    void SetCloneCollisionIgnored(bool ignore)
+    {
+        if (ignore)
+        {
+            ignoredMergeColliders.Clear();
+
+            List<Collider2D> cloneColliders = GetCloneColliders();
+            for (int i = 0; i < cloneColliders.Count; i++)
+            {
+                Collider2D cloneCollider = cloneColliders[i];
+                Physics2D.IgnoreCollision(playerCol, cloneCollider, true);
+                ignoredMergeColliders.Add(cloneCollider);
+            }
+
+            return;
+        }
+
+        for (int i = ignoredMergeColliders.Count - 1; i >= 0; i--)
+        {
+            Collider2D cloneCollider = ignoredMergeColliders[i];
+            if (cloneCollider != null)
+            {
+                Physics2D.IgnoreCollision(playerCol, cloneCollider, false);
+            }
+        }
+
+        ignoredMergeColliders.Clear();
+    }
+
+    IEnumerator MergeInvincibleBlink()
+    {
+        while (isMergeInvincible)
+        {
+            sp.enabled = false;
+            yield return new WaitForSeconds(0.1f);
+            sp.enabled = true;
+            yield return new WaitForSeconds(0.1f);
+        }
+
+        sp.enabled = true;
+    }
+
+    public void RespawnAt(Vector3 position)
+    {
+        if (!isRespawning)
+        {
+            StartCoroutine(RespawnCoroutine(position));
+        }
+    }
+
+    IEnumerator RespawnCoroutine(Vector3 position)
+    {
+        isRespawning = true;
+        isMergeInvincible = true;
+        SetControl(false);
+
+        rb.velocity = Vector2.zero;
+        rb.angularVelocity = 0f;
+        playerCol.enabled = false;
+
+        Instantiate(slimeDestoryPar, transform.position, Quaternion.identity);
+
+        Color c = sp.color;
+        c.a = 0f;
+        sp.color = c;
+        triangle.SetActive(false);
+
+        yield return new WaitForSeconds(respawnDelay);
+
+        transform.position = position;
+
+        c.a = 1f;
+        sp.color = c;
+        triangle.SetActive(true);
+
+        playerCol.enabled = true;
+        SetControl(true);
+        SetCloneCollisionIgnored(true);
+
+        if (mergeInvincibleBlinkCoroutine != null)
+        {
+            StopCoroutine(mergeInvincibleBlinkCoroutine);
+        }
+        mergeInvincibleBlinkCoroutine = StartCoroutine(MergeInvincibleBlink());
+
+        yield return new WaitForSeconds(mergeInvincibleTime);
+
+        isMergeInvincible = false;
+        SetCloneCollisionIgnored(false);
+        if (mergeInvincibleBlinkCoroutine != null)
+        {
+            StopCoroutine(mergeInvincibleBlinkCoroutine);
+            mergeInvincibleBlinkCoroutine = null;
+        }
+        sp.enabled = true;
+        isRespawning = false;
+    }
+
+    public void RespawnAllSlimes(Vector3 playerPosition, Vector3 clonePosition)
+    {
+        StartCoroutine(RespawnAllSlimesCoroutine(playerPosition, clonePosition));
+    }
+
+    IEnumerator RespawnAllSlimesCoroutine(Vector3 playerPosition, Vector3 clonePosition)
+    {
+        if (isRespawning) yield break;
+
+        isRespawning = true;
+        isMergeInvincible = true;
+        SetControl(false);
+
+        rb.velocity = Vector2.zero;
+        rb.angularVelocity = 0f;
+        playerCol.enabled = false;
+
+        Color c = sp.color;
+        c.a = 0f;
+        sp.color = c;
+        triangle.SetActive(false);
+
+        for (int i = 0; i < slimeCount.Count; i++)
+        {
+            if (slimeCount[i] == null || slimeCount[i] == gameObject) continue;
+
+            Rigidbody2D cloneRb = slimeCount[i].GetComponent<Rigidbody2D>();
+            Collider2D cloneCol = slimeCount[i].GetComponent<Collider2D>();
+            SpriteRenderer cloneSp = slimeCount[i].GetComponent<SpriteRenderer>();
+
+            if (cloneRb != null)
+            {
+                cloneRb.velocity = Vector2.zero;
+                cloneRb.angularVelocity = 0f;
+            }
+
+            if (cloneCol != null) cloneCol.enabled = false;
+
+            if (cloneSp != null)
+            {
+                Color cloneColor = cloneSp.color;
+                cloneColor.a = 0f;
+                cloneSp.color = cloneColor;
+            }
+        }
+
+        yield return new WaitForSeconds(respawnDelay);
+
+        transform.position = playerPosition;
+
+        c.a = 1f;
+        sp.color = c;
+        triangle.SetActive(true);
+        playerCol.enabled = true;
+
+        for (int i = 0; i < slimeCount.Count; i++)
+        {
+            if (slimeCount[i] == null || slimeCount[i] == gameObject) continue;
+
+            slimeCount[i].transform.position = clonePosition;
+
+            Collider2D cloneCol = slimeCount[i].GetComponent<Collider2D>();
+            SpriteRenderer cloneSp = slimeCount[i].GetComponent<SpriteRenderer>();
+
+            if (cloneCol != null) cloneCol.enabled = true;
+
+            if (cloneSp != null)
+            {
+                Color cloneColor = cloneSp.color;
+                cloneColor.a = 1f;
+                cloneSp.color = cloneColor;
+            }
+        }
+
+        SetControl(true);
+        SetCloneCollisionIgnored(true);
+
+        yield return new WaitForSeconds(mergeInvincibleTime);
+
+        isMergeInvincible = false;
+        SetCloneCollisionIgnored(false);
+        sp.enabled = true;
+        isRespawning = false;
+    }
+
+    public void NormalizeSlimeState()
+    {
+        slimeSize = Mathf.Clamp(slimeSize, 0f, maxSlimeSize);
+        rb.mass = defaultMass * slimeSize;
+    }
+
+
+
 
 
 
