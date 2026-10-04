@@ -45,7 +45,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5582dd4568618e9479eac54918d0f0c1, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  breakDistance: 10
+  breakDistance: 9.5
   pullSpeed: 12
   stopDistance: 0.5
   pullKey: 118

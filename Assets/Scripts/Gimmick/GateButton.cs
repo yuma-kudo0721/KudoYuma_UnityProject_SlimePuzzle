@@ -40,6 +40,12 @@ public class GateButton : MonoBehaviour
         }
     }
 
+    public void ResetSwitch()
+    {
+        sp.sprite = normalSprite;
+        openDoor = false;
+    }
+
     /*void OnTriggerStay2D(Collider2D collision)
     {
         // ボタンを押された状態に変更

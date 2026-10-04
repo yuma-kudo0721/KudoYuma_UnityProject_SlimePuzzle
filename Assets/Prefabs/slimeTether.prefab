@@ -11,9 +11,10 @@ GameObject:
   - component: {fileID: 4192321309415713279}
   - component: {fileID: 7883659332345877542}
   - component: {fileID: 8664822643199255904}
-  m_Layer: 0
+  - component: {fileID: 2157749795703460061}
+  m_Layer: 16
   m_Name: slimeTether
-  m_TagString: Untagged
+  m_TagString: Himo
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -46,9 +47,14 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   breakDistance: 10
-  pullSpeed: 12
+  pullSpeed: 15
   stopDistance: 0.5
   pullKey: 118
+  catchLayer:
+    serializedVersion: 2
+    m_Bits: 8192
+  catchPullSpeed: 12
+  releaseDistance: 1
 --- !u!120 &8664822643199255904
 LineRenderer:
   serializedVersion: 2
@@ -90,7 +96,7 @@ LineRenderer:
   m_LightmapParameters: {fileID: 0}
   m_SortingLayerID: 0
   m_SortingLayer: 0
-  m_SortingOrder: 0
+  m_SortingOrder: 12
   m_Positions:
   - {x: 0, y: 0, z: 0}
   - {x: 0, y: 0, z: 1}
@@ -153,3 +159,44 @@ LineRenderer:
   m_UseWorldSpace: 1
   m_Loop: 0
   m_ApplyActiveColorSpace: 1
+--- !u!68 &2157749795703460061
+EdgeCollider2D:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1982371291656775624}
+  m_Enabled: 1
+  m_Density: 1
+  m_Material: {fileID: 6200000, guid: fd2b6b91068d0204da8a78e9b62fbbc6, type: 2}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_ForceSendLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_ForceReceiveLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_ContactCaptureLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_CallbackLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_IsTrigger: 0
+  m_UsedByEffector: 0
+  m_UsedByComposite: 0
+  m_Offset: {x: 0, y: 0}
+  m_EdgeRadius: 0
+  m_Points:
+  - {x: -44.854168, y: 8.772196}
+  - {x: -43.854168, y: 8.772196}
+  m_AdjacentStartPoint: {x: 0, y: 0}
+  m_AdjacentEndPoint: {x: 0, y: 0}
+  m_UseAdjacentStartPoint: 0
+  m_UseAdjacentEndPoint: 0

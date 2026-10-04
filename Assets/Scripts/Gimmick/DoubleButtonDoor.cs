@@ -1,15 +1,14 @@
 using UnityEngine;
 
-public class DoubleButtonDoor : MonoBehaviour
+public class ButtonDoor : MonoBehaviour
 {
-    [SerializeField] HoldGateButton buttonA;
-    [SerializeField] HoldGateButton buttonB;
+    [SerializeField] HoldGateButton[] buttons;
+    [SerializeField] int requiredPressCount = 2;
     [SerializeField] float moveSpeed = 2f;
     [SerializeField] float openHeight = 3f;
 
     Vector3 closedPos;
     Vector3 openPos;
-
     bool isUnlocked = false;
 
     void Start()
@@ -20,22 +19,31 @@ public class DoubleButtonDoor : MonoBehaviour
 
     void Update()
     {
-        if (!isUnlocked && buttonA != null && buttonB != null)
+        if (!isUnlocked && buttons != null && buttons.Length >= requiredPressCount)
         {
-            if (buttonA.openDoor && buttonB.openDoor)
+            int pressedCount = 0;
+            foreach (var button in buttons)
+            {
+                if (button != null && button.openDoor)
+                {
+                    pressedCount++;
+                }
+            }
+
+            if (pressedCount >= requiredPressCount)
             {
                 isUnlocked = true;
-                buttonA.LockPressed();
-                buttonB.LockPressed();
+                foreach (var button in buttons)
+                {
+                    if (button != null)
+                    {
+                        button.LockPressed();
+                    }
+                }
             }
         }
 
         Vector3 targetPos = isUnlocked ? openPos : closedPos;
-
-        transform.position = Vector3.MoveTowards(
-            transform.position,
-            targetPos,
-            moveSpeed * Time.deltaTime
-        );
+        transform.position = Vector3.MoveTowards(transform.position, targetPos, moveSpeed * Time.deltaTime);
     }
 }

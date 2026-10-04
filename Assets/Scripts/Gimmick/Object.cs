@@ -58,10 +58,11 @@ public class Object : MonoBehaviour
             {
                 if (!clone.TryBeginMerge()) return;
 
-                player.slimeCount.Remove(col.gameObject);
+                player.RemoveSlimeFromCount(col.gameObject);
                 player.AddSlimeWithCap(clone.size + 1);
 
                 Destroy(col.gameObject);
+
             }
         }
 

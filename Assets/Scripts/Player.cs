@@ -131,6 +131,31 @@ public class Player : MonoBehaviour
 
     float defaultMass;
 
+    public event Action Respawned;
+
+    [Header("Wall Climb")]
+    [SerializeField] float wallClimbSpeed = 3f;
+    [SerializeField] float smallSlimeClimbDistance = 6f;
+    [SerializeField] float largeSlimeClimbDistance = 1.5f;
+    [SerializeField] float smallestSlimeSize = 1f;
+    [SerializeField] float largestSlimeSize = 5f;
+    bool reachedClimbLimit;
+
+    ClimbableWall2D currentClimbWall;
+    bool isWallClimbing;
+    float climbStartY;
+    [SerializeField, Min(0f)] float wallDetectionGrace = 0.15f;
+    float lastClimbableWallTime;
+    int climbWallSide;
+    bool climbStartFlipX;
+    float defaultGravityScale;
+    Quaternion defaultRotation;
+    public int ControllSlimeNumber => controllSlimeNumber;
+
+    [SerializeField] LayerMask climbableLayer = ~0;
+    [SerializeField] float wallCheckDistance = 0.25f;
+    [SerializeField] Transform wallCheckPoint;
+
 
 
     public void Awake()
@@ -160,6 +185,10 @@ public class Player : MonoBehaviour
                 Debug.Log("リスポーン");
             }
         }
+
+        defaultGravityScale = rb.gravityScale;
+        defaultRotation = transform.rotation;
+        climbStartFlipX = sp.flipX;
     }
 
 
@@ -175,6 +204,7 @@ public class Player : MonoBehaviour
 
         CheckGround();
         CheckWater();
+        UpdateWallClimb();
         Move();
         jump();
         DropDown();
@@ -221,6 +251,8 @@ public class Player : MonoBehaviour
                 GameObject g = Instantiate(slimeClone, bullet.transform.position, Quaternion.identity);
                 slimeCount.Add(g);
                 CreateTether(g.transform);
+                //CreateRope(g.transform);
+
                 Destroy(bullet);
             }
 
@@ -301,6 +333,12 @@ public class Player : MonoBehaviour
         Vector3 playerPos = transform.position;// 現在のスライムの位置
         Vector3 NextPos = next.transform.position; // 次のスライムの位置
 
+        FollowKey[] keys = FindObjectsOfType<FollowKey>();
+        foreach (FollowKey key in keys)
+        {
+            key.OnSlimeSwitch(controllSlimeNumber);
+        }
+
         transform.position = NextPos;  // 現在のスライムの位置を次のスライムの位置に変更
         next.transform.position = playerPos; // 次のスライムの位置を現在のスライムの位置に変更
 
@@ -316,6 +354,7 @@ public class Player : MonoBehaviour
     bool ismoving = false;
     void Move()
     {
+        if (isWallClimbing) return;
         float horizontalInput = Input.GetAxisRaw("Horizontal");
         Vector2 direction = new Vector2(horizontalInput, 0).normalized;
         rb.velocity = new Vector2(direction.x * speed, rb.velocity.y);
@@ -364,6 +403,7 @@ public class Player : MonoBehaviour
 
     void jump()
     {
+        if (isWallClimbing) return;
         //zキーが押された瞬間
         if (Input.GetKeyDown(KeyCode.Z))
         {//getkeyは押されている間　getkeydownは押した瞬間
@@ -408,6 +448,107 @@ public class Player : MonoBehaviour
 
 
         }
+    }
+    void UpdateWallClimb()
+    {
+        ClimbableWall2D wall = FindClimbableWall(out int wallSide);
+        float verticalInput = Input.GetAxisRaw("Vertical");
+
+        if (wall != null)
+        {
+            lastClimbableWallTime = Time.time;
+            climbWallSide = wallSide;
+        }
+        else if (isWallClimbing && Time.time - lastClimbableWallTime <= wallDetectionGrace)
+        {
+            // Rayが一時的に途切れても短い猶予の間は登り状態を保つ。
+            wall = currentClimbWall;
+            wallSide = climbWallSide;
+        }
+
+        if (wall == null || Mathf.Approximately(verticalInput, 0f))
+        {
+            if (isWallClimbing) StopWallClimb();
+
+            // 壁の判定範囲から離れたら、次に同じ壁へ戻ったときは新しい登りとして扱う。
+            if (wall == null && currentClimbWall != null &&
+                Time.time - lastClimbableWallTime > wallDetectionGrace)
+            {
+                currentClimbWall = null;
+                reachedClimbLimit = false;
+            }
+
+            return;
+        }
+
+        if (currentClimbWall != wall)
+        {
+            currentClimbWall = wall;
+            climbStartY = transform.position.y;
+            reachedClimbLimit = false;
+        }
+
+        float sizeRate = Mathf.InverseLerp(largestSlimeSize, smallestSlimeSize, slimeSize);
+        float maxClimbDistance = Mathf.Lerp(largeSlimeClimbDistance, smallSlimeClimbDistance, sizeRate);
+        float climbedDistance = transform.position.y - climbStartY;
+
+        // 上限から開始位置まで戻ったら、同じ壁でも再挑戦できる。
+        if (reachedClimbLimit && transform.position.y <= climbStartY + 0.05f)
+        {
+            reachedClimbLimit = false;
+            climbStartY = transform.position.y;
+            climbedDistance = 0f;
+        }
+
+        if (verticalInput > 0f && climbedDistance >= maxClimbDistance)
+        {
+            reachedClimbLimit = true;
+            StopWallClimb();
+            return;
+        }
+
+        if (reachedClimbLimit && verticalInput > 0f) return;
+
+        if (!isWallClimbing)
+        {
+            climbStartFlipX = sp.flipX;
+            isWallClimbing = true;
+            rb.gravityScale = 0f;
+        }
+
+        isWallClimbing = true;
+        rb.gravityScale = 0f;
+        // 左壁なら左向き、右壁なら右向き。SpriteRendererだけを反転して物理Colliderは動かさない。
+        sp.flipX = wallSide < 0;
+        rb.velocity = new Vector2(0f, verticalInput * wallClimbSpeed);
+        anim.SetBool("Walk", true);
+    }
+
+
+    void StopWallClimb()
+    {
+        if (!isWallClimbing) return;
+
+        isWallClimbing = false;
+
+        rb.gravityScale = defaultGravityScale;
+        transform.rotation = defaultRotation;
+        sp.flipX = climbStartFlipX;
+
+        anim.SetBool("Walk", false);
+    }
+
+    void ResetWallClimbState()
+    {
+        isWallClimbing = false;
+        reachedClimbLimit = false;
+        currentClimbWall = null;
+
+        rb.gravityScale = defaultGravityScale;
+        transform.rotation = defaultRotation;
+        sp.flipX = climbStartFlipX;
+
+        anim.SetBool("Walk", false);
     }
 
 
@@ -467,6 +608,7 @@ public class Player : MonoBehaviour
     {
         rb.bodyType = RigidbodyType2D.Dynamic;
         transform.position = initialPosition;
+        ResetWallClimbState();
 
 
         rb.velocity = new Vector2(0, 0);
@@ -548,6 +690,11 @@ public class Player : MonoBehaviour
             slimeCount.Remove(collision.gameObject);
             AddSlimeWithCap(clone.size + 1);
             CloneReset();
+            FollowKey[] keys = FindObjectsOfType<FollowKey>();
+            foreach (FollowKey key in keys)
+            {
+                key.OnSlimeMerged(controllSlimeNumber);
+            }
             Destroy(collision.gameObject);
 
             if (currentTether != null && currentTether.IsConnectedTo(collision.gameObject))
@@ -955,11 +1102,19 @@ public class Player : MonoBehaviour
         }
     }
 
+    public void RemoveSlimeFromCount(GameObject slime)
+    {
+        slimeCount.Remove(slime);
+        CloneReset();
+    }
+
+
     IEnumerator RespawnCoroutine(Vector3 position)
     {
         isRespawning = true;
         isMergeInvincible = true;
         SetControl(false);
+        ResetWallClimbState();
 
         rb.velocity = Vector2.zero;
         rb.angularVelocity = 0f;
@@ -975,6 +1130,8 @@ public class Player : MonoBehaviour
         yield return new WaitForSeconds(respawnDelay);
 
         transform.position = position;
+
+        Respawned?.Invoke();
 
         c.a = 1f;
         sp.color = c;
@@ -1015,6 +1172,7 @@ public class Player : MonoBehaviour
         isRespawning = true;
         isMergeInvincible = true;
         SetControl(false);
+        ResetWallClimbState();
 
         rb.velocity = Vector2.zero;
         rb.angularVelocity = 0f;
@@ -1052,6 +1210,8 @@ public class Player : MonoBehaviour
         yield return new WaitForSeconds(respawnDelay);
 
         transform.position = playerPosition;
+
+        Respawned?.Invoke();
 
         c.a = 1f;
         sp.color = c;
@@ -1093,6 +1253,68 @@ public class Player : MonoBehaviour
         slimeSize = Mathf.Clamp(slimeSize, 0f, maxSlimeSize);
         rb.mass = defaultMass * slimeSize;
     }
+
+
+    [SerializeField] GameObject slimeRopePrefab;
+    SlimeRope currentRope;
+    void CreateRope(Transform cloneTransform)
+    {
+        if (currentRope != null)
+        {
+            Destroy(currentRope.gameObject);
+        }
+
+        GameObject ropeObj = Instantiate(slimeRopePrefab);
+        currentRope = ropeObj.GetComponent<SlimeRope>();
+        currentRope.Setup(transform, cloneTransform);
+    }
+
+    ClimbableWall2D FindClimbableWall(out int wallSide)
+    {
+        wallSide = 0;
+        Bounds bounds = playerCol.bounds;
+        Vector2 origin = wallCheckPoint != null
+            ? new Vector2(bounds.center.x, wallCheckPoint.position.y)
+            : (Vector2)bounds.center;
+
+        float leftDistance = Mathf.Max(0f, origin.x - bounds.min.x) + wallCheckDistance;
+        float rightDistance = Mathf.Max(0f, bounds.max.x - origin.x) + wallCheckDistance;
+
+        ClimbableWall2D leftWall = FindWallInHits(
+            Physics2D.RaycastAll(origin, Vector2.left, leftDistance, climbableLayer), out float leftHitDistance);
+        ClimbableWall2D rightWall = FindWallInHits(
+            Physics2D.RaycastAll(origin, Vector2.right, rightDistance, climbableLayer), out float rightHitDistance);
+
+        if (leftWall == null && rightWall == null) return null;
+        if (rightWall == null || (leftWall != null && leftHitDistance <= rightHitDistance))
+        {
+            wallSide = -1;
+            return leftWall;
+        }
+
+        wallSide = 1;
+        return rightWall;
+    }
+
+    ClimbableWall2D FindWallInHits(RaycastHit2D[] hits, out float nearestDistance)
+    {
+        ClimbableWall2D nearestWall = null;
+        nearestDistance = float.PositiveInfinity;
+        foreach (RaycastHit2D hit in hits)
+        {
+            if (hit.collider == null || hit.collider.transform.root == transform.root) continue;
+            ClimbableWall2D wall = hit.collider.GetComponentInParent<ClimbableWall2D>();
+            if (wall != null && hit.distance < nearestDistance)
+            {
+                nearestWall = wall;
+                nearestDistance = hit.distance;
+            }
+        }
+
+        return nearestWall;
+    }
+
+
 
 
 

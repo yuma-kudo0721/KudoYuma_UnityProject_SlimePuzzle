@@ -17,11 +17,13 @@ TagManager:
   - Wall
   - Ladder
   - Bottom
+  - Needle
+  - Himo
   layers:
   - Default
   - TransparentFX
   - Ignore Raycast
-  - 
+  - Button
   - Water
   - UI
   - Ground
@@ -34,9 +36,9 @@ TagManager:
   - Box
   - DropPlatformLayer
   - BulletWall
-  - 
-  - 
-  - 
+  - Himo
+  - Rope
+  - Wall
   - 
   - 
   - 

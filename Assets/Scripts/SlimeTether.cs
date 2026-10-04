@@ -1,6 +1,8 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 [RequireComponent(typeof(LineRenderer))]
+[RequireComponent(typeof(EdgeCollider2D))]
 public class SlimeTether : MonoBehaviour
 {
     [SerializeField] float breakDistance = 8f;
@@ -8,15 +10,26 @@ public class SlimeTether : MonoBehaviour
     [SerializeField] float stopDistance = 0.5f;
     [SerializeField] KeyCode pullKey = KeyCode.V;
 
+    [Header("Catch Objects")]
+    [SerializeField] LayerMask catchLayer;
+    [SerializeField] float catchPullSpeed = 6f;
+    [SerializeField] float releaseDistance = 0.4f;
+
     Transform player;
     Transform clone;
 
     Rigidbody2D cloneRb;
+    Collider2D playerCol;
     Collider2D cloneCol;
     LineRenderer line;
+    EdgeCollider2D edgeCollider;
 
     float defaultGravity;
     bool isBroken;
+    bool isIgnoringPlayerCloneCollision;
+
+    Vector2[] points = new Vector2[2];
+    List<Rigidbody2D> caughtBodies = new List<Rigidbody2D>();
 
     public void Setup(Transform playerTransform, Transform cloneTransform)
     {
@@ -33,6 +46,18 @@ public class SlimeTether : MonoBehaviour
                 defaultGravity = cloneRb.gravityScale;
             }
         }
+
+        playerCol = player.GetComponent<Collider2D>();
+
+        if (edgeCollider != null && playerCol != null)
+        {
+            Physics2D.IgnoreCollision(edgeCollider, playerCol, true);
+        }
+
+        if (edgeCollider != null && cloneCol != null)
+        {
+            Physics2D.IgnoreCollision(edgeCollider, cloneCol, true);
+        }
     }
 
     void Awake()
@@ -42,6 +67,21 @@ public class SlimeTether : MonoBehaviour
         line.useWorldSpace = true;
         line.startWidth = 0.08f;
         line.endWidth = 0.08f;
+
+        edgeCollider = GetComponent<EdgeCollider2D>();
+        edgeCollider.isTrigger = false;
+        edgeCollider.edgeRadius = 0.08f;
+    }
+
+    void OnDestroy()
+    {
+        SetCloneColliderEnabled(true);
+        SetPlayerCloneCollisionIgnored(false);
+
+        for (int i = 0; i < caughtBodies.Count; i++)
+        {
+            ReleaseCaughtBody(caughtBodies[i]);
+        }
     }
 
     void Update()
@@ -54,6 +94,10 @@ public class SlimeTether : MonoBehaviour
 
         line.SetPosition(0, player.position);
         line.SetPosition(1, clone.position);
+
+        points[0] = transform.InverseTransformPoint(player.position);
+        points[1] = transform.InverseTransformPoint(clone.position);
+        edgeCollider.points = points;
 
         float distance = Vector2.Distance(player.position, clone.position);
         if (distance > breakDistance)
@@ -72,6 +116,30 @@ public class SlimeTether : MonoBehaviour
         }
     }
 
+    void OnCollisionEnter2D(Collision2D collision)
+    {
+        if (((1 << collision.gameObject.layer) & catchLayer) == 0) return;
+
+        Rigidbody2D rb = collision.rigidbody;
+        if (rb == null) return;
+
+        if (!caughtBodies.Contains(rb))
+        {
+            caughtBodies.Add(rb);
+            Debug.Log( collision.gameObject.name + " caught by tether. Total caught: " + caughtBodies.Count);
+        }
+    }
+
+    void OnCollisionExit2D(Collision2D collision)
+    {
+        Rigidbody2D rb = collision.rigidbody;
+        if (rb == null) return;
+
+        ReleaseCaughtBody(rb);
+        caughtBodies.Remove(rb);
+        Debug.Log( collision.gameObject.name + " released from tether. Total caught: " + caughtBodies.Count);
+    }
+
     void PullCloneStraight()
     {
         if (cloneRb == null) return;
@@ -82,33 +150,97 @@ public class SlimeTether : MonoBehaviour
         {
             cloneRb.velocity = Vector2.zero;
             cloneRb.gravityScale = defaultGravity;
+            SetCloneColliderEnabled(true);
+            SetPlayerCloneCollisionIgnored(false);
 
-            if (cloneCol != null)
-            {
-                cloneCol.enabled = true;
-            }
             return;
         }
 
-        if (cloneCol != null)
+        SetCloneColliderEnabled(false);
+        SetPlayerCloneCollisionIgnored(true);
+
+        Vector2 pullDirection = diff.normalized;
+
+        cloneRb.velocity = pullDirection * pullSpeed;
+        PullCaughtBodies(pullDirection);
+    }
+
+    void PullCaughtBodies(Vector2 pullDirection)
+    {
+        for (int i = caughtBodies.Count - 1; i >= 0; i--)
         {
-            cloneCol.enabled = false;
+            Rigidbody2D rb = caughtBodies[i];
+
+            if (rb == null)
+            {
+                caughtBodies.RemoveAt(i);
+                continue;
+            }
+
+            float distanceToTether = DistancePointToSegment(
+                rb.position,
+                player.position,
+                clone.position
+            );
+
+            if (distanceToTether > releaseDistance)
+            {
+                ReleaseCaughtBody(rb);
+                caughtBodies.RemoveAt(i);
+                continue;
+            }
+
+            PushableRock rock = rb.GetComponent<PushableRock>();
+            if (rock != null)
+            {
+                rock.SetPulledByTether(true);
+            }
+
+            rb.velocity = pullDirection * catchPullSpeed;
+        }
+    }
+
+    void ReleaseCaughtBody(Rigidbody2D rb)
+    {
+        if (rb == null) return;
+
+        PushableRock rock = rb.GetComponent<PushableRock>();
+        if (rock != null)
+        {
+            rock.SetPulledByTether(false);
+        }
+    }
+
+    float DistancePointToSegment(Vector2 point, Vector2 start, Vector2 end)
+    {
+        Vector2 lineVector = end - start;
+        float lineLength = lineVector.sqrMagnitude;
+
+        if (lineLength == 0f)
+        {
+            return Vector2.Distance(point, start);
         }
 
-        cloneRb.velocity = diff.normalized * pullSpeed;
+        float t = Vector2.Dot(point - start, lineVector) / lineLength;
+        t = Mathf.Clamp01(t);
+
+        Vector2 closestPoint = start + lineVector * t;
+        return Vector2.Distance(point, closestPoint);
     }
 
     void StopPulling()
     {
         if (cloneRb != null)
         {
-
             cloneRb.gravityScale = defaultGravity;
         }
 
-        if (cloneCol != null)
+        SetPlayerCloneCollisionIgnored(false);
+        SetCloneColliderEnabled(true);
+
+        for (int i = 0; i < caughtBodies.Count; i++)
         {
-            cloneCol.enabled = true;
+            ReleaseCaughtBody(caughtBodies[i]);
         }
     }
 
@@ -122,5 +254,22 @@ public class SlimeTether : MonoBehaviour
     public bool IsConnectedTo(GameObject target)
     {
         return clone != null && clone.gameObject == target;
+    }
+
+    void SetPlayerCloneCollisionIgnored(bool ignore)
+    {
+        if (isIgnoringPlayerCloneCollision == ignore) return;
+        if (playerCol == null || cloneCol == null) return;
+
+        Physics2D.IgnoreCollision(playerCol, cloneCol, ignore);
+        isIgnoringPlayerCloneCollision = ignore;
+    }
+
+    void SetCloneColliderEnabled(bool enabled)
+    {
+        if (cloneCol != null)
+        {
+            cloneCol.enabled = enabled;
+        }
     }
 }
